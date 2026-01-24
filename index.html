@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIVE BUS TRACKER | School Transport Hub</title>
+    <link rel="icon" href="Dps logo.jpeg" type="image/jpeg">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <div class="school-section">
+            <img src="school logo.png" alt="School Logo" class="logo">
+            <div class="title-group">
+                <h1>BUS TRACKER</h1>
+                <p>Delhi Public School • Smart Gateway Hub</p>
+            </div>
+        </div>
+        <div class="clock-section">
+            <div id="time">00:00:00</div>
+            <div id="date">JAN 14, 2026</div>
+        </div>
+    </header>
+
+    <!-- NOTIFICATION CONTAINER (Top Right) -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Language Selector (Vertical Menu Style) -->
+    <div id="languageSelector" class="language-menu hidden">
+        <div class="menu-header">Language |</div>
+        <div class="menu-item" onclick="setLanguage('hi')">
+            <div class="lang-avatar color-hi">HI</div>
+            <span class="lang-text">Hindi</span>
+        </div>
+        <div class="menu-item" onclick="setLanguage('ka')">
+            <div class="lang-avatar color-ka">KA</div>
+            <span class="lang-text">Kannada</span>
+        </div>
+        <div class="menu-item active" onclick="setLanguage('en')">
+            <div class="lang-avatar color-en">EN</div>
+            <span class="lang-text">English</span>
+        </div>
+    </div>
+
+    <main>
+        <!-- LANDING SCREEN (Mode Selection) -->
+        <div id="landing-view" class="landing-section">
+            <h2 class="landing-title">Select Interface Mode</h2>
+            <div class="mode-cards-container">
+                <!-- Display Mode Card -->
+                <div class="mode-card display-mode" onclick="enterDisplayMode('REGULAR')">
+                    <div class="card-icon">🖥️</div>
+                    <div class="card-label">DISPLAY MODE</div>
+                    <div class="card-desc">Public view for regular routes (S-Series).</div>
+                </div>
+
+                <!-- Stayback Mode Card (NEW) -->
+                <div class="mode-card display-mode stayback-mode" onclick="enterDisplayMode('STAYBACK')">
+                    <div class="card-icon">🌙</div> <!-- Moon icon for stayback/late -->
+                    <div class="card-label">STAYBACK MODE</div>
+                    <div class="card-desc">Public view for stayback routes (E-Series).</div>
+                </div>
+
+                <!-- Input Mode Card -->
+                <div class="mode-card input-mode">
+                    <div class="card-icon">⌨️</div>
+                    <div class="card-label">INPUT MODE</div>
+                    <div class="card-desc">Secure registry for transport coordinators.</div>
+
+                    <div class="pin-container" id="pinContainer">
+                        <input type="text" id="busIdInput" class="pin-input" placeholder="BUS ID (e.g. S01, E01)"
+                            style="margin-bottom: 5px;">
+                        <input type="password" id="pinInput" class="pin-input" placeholder="PASSWORD" maxlength="4">
+                        <!-- New Feedback Msg Container -->
+                        <div id="authFeedback" class="input-feedback-msg">INCORRECT CREDENTIALS</div>
+                        <button class="enter-btn" onclick="checkAuth()">Access Registry</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DISPLAY VIEW (Public Board) -->
+        <div id="display-view" class="view-container">
+            <section class="board-section terminal-section">
+                <div class="section-header">
+                    <div class="header-main">
+                        <span class="status-dot green"></span>
+                        <h2 id="displayTitle">LIVE BUS STATUS</h2>
+                    </div>
+                </div>
+                <div class="slider-container" id="terminalContainer">
+                    <div class="slider-track" id="terminalTrack">
+                        <!-- Pages will be injected here -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- SINGLE BUS ADMIN VIEW -->
+        <div id="single-admin-view" class="view-container">
+            <div class="single-admin-container">
+                <div class="admin-card" id="singleAdminCard">
+                    <!-- Single Bus Card Injected Here -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="alertBanner" class="alert-banner hidden">
+        <div class="banner-content">
+            <span class="banner-icon">⚠️</span>
+            <p><strong>ATTENTION:</strong> Students utilizing buses currently in 'WAITING' status are requested to
+                remain in the Open Auditorium until the buses are parked.</p>
+        </div>
+    </div>
+
+    <footer>
+        <div class="attribution">
+            MADE BY <span>A.ADVAITH 7P</span>
+        </div>
+
+        <div class="mode-switch-container" id="footerSwitch">
+            <button id="modeToggle" class="mode-btn">LOGOUT / HOME</button>
+        </div>
+
+        <div class="system-tag">
+            SECURE LIVE GPS FEED • AUTO-REFRESH ACTIVE
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA & STATE ---
+        // S1-S35
+        const regularBuses = [
+            { id: "S01", status: "BUS BAY AREA", isStarted: false },
+            { id: "S02", status: "BUS BAY AREA", isStarted: false },
+            { id: "S03", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "S04", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "S05", status: "BUS BAY AREA", isStarted: true },
+            { id: "S06", status: "BUS BAY AREA", isStarted: true },
+            { id: "S07", status: "IN DOCK", isStarted: false },
+            { id: "S08", status: "ON ROAD", isStarted: true },
+            { id: "S09", status: "IN DOCK", isStarted: false },
+            { id: "S10", status: "ON ROAD", isStarted: true },
+            { id: "S11", status: "BUS BAY AREA", isStarted: false },
+            { id: "S12", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "S13", status: "BUS BAY AREA", isStarted: false },
+            { id: "S14", status: "BUS BAY AREA", isStarted: false },
+            { id: "S15", status: "IN DOCK", isStarted: false },
+            { id: "S16", status: "IN DOCK", isStarted: false },
+            { id: "S17", status: "ON ROAD", isStarted: true },
+            { id: "S18", status: "ON ROAD", isStarted: true },
+            { id: "S19", status: "BUS BAY AREA", isStarted: false },
+            { id: "S20", status: "BUS BAY AREA", isStarted: false },
+            { id: "S21", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "S22", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "S23", status: "IN DOCK", isStarted: false },
+            { id: "S24", status: "IN DOCK", isStarted: false },
+            { id: "S25", status: "ON ROAD", isStarted: true },
+            { id: "S26", status: "ON ROAD", isStarted: true },
+            { id: "S27", status: "BUS BAY AREA", isStarted: false },
+            { id: "S28", status: "BUS BAY AREA", isStarted: false },
+            { id: "S29", status: "BUS BAY AREA", isStarted: false },
+            { id: "S30", status: "BUS BAY AREA", isStarted: false },
+            { id: "S31", status: "BUS BAY AREA", isStarted: false },
+            { id: "S32", status: "BUS BAY AREA", isStarted: false },
+            { id: "S33", status: "ON ROAD", isStarted: true },
+            { id: "S34", status: "ON ROAD", isStarted: true },
+            { id: "S35", status: "BUS BAY AREA", isStarted: false }
+        ];
+
+        // E01-E10 (Stayback)
+        const staybackBuses = [
+            { id: "E01", status: "BUS BAY AREA", isStarted: false },
+            { id: "E02", status: "BUS BAY AREA", isStarted: false },
+            { id: "E03", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "E04", status: "WAITING", isStarted: false },
+            { id: "E05", status: "ON ROAD", isStarted: true },
+            { id: "E06", status: "BUS BAY AREA", isStarted: false },
+            { id: "E07", status: "WAITING", isStarted: false },
+            { id: "E08", status: "OPEN AUDITORIUM", isStarted: false },
+            { id: "E09", status: "BUS BAY AREA", isStarted: false },
+            { id: "E10", status: "BUS BAY AREA", isStarted: false }
+        ];
+
+        let buses = [];
+        let previousBuses = []; // For Diffing Updates
+        let currentAdminBusId = null;
+        let currentLang = 'en';
+        let currentDisplayMode = 'REGULAR'; // 'REGULAR' or 'STAYBACK'
+
+        // Loading Data
+        function loadData() {
+            const stored = localStorage.getItem('busData_v3');
+            if (stored) {
+                buses = JSON.parse(stored);
+            } else {
+                buses = [...JSON.parse(JSON.stringify(regularBuses)), ...JSON.parse(JSON.stringify(staybackBuses))];
+            }
+        }
+
+        function saveAndBroadcast() {
+            localStorage.setItem('busData_v3', JSON.stringify(buses));
+            // We manually dispatch to self for immediate UI update
+            // Storage event ensures other tabs get it
+        }
+
+
+        // --- TIME & DATE ---
+        function updateClock() {
+            const now = new Date();
+            const timeEl = document.getElementById('time');
+            const dateEl = document.getElementById('date');
+
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleTimeString('en-US', {
+                    hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                }).toUpperCase();
+            }
+            if (dateEl) {
+                dateEl.textContent = now.toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric'
+                }).toUpperCase();
+            }
+        }
+
+        // --- TRANSLATION UTILS ---
+        const translations = {
+            en: {
+                busBay: "BUS BAY",
+                nearDps: "NEAR GATE 4",
+                inDock: "IN DOCK",
+                openAudi: "OPEN AUDITORIUM",
+                busStarted: "BUS STARTED",
+                customPlace: "Custom Location...",
+                set: "SET"
+            },
+            hi: {
+                busBay: "बस बे",
+                nearDps: "गेट 4 के पास",
+                inDock: "डॉक में",
+                openAudi: "ओपन ऑडिटोरियम",
+                busStarted: "बस शुरू हो गई",
+                customPlace: "कस्टम स्थान...",
+                set: "सेट करें"
+            },
+            ka: {
+                busBay: "ಬಸ್ ಬೇ",
+                nearDps: "ಗೇಟ್ 4 ರ ಹತ್ತಿರ",
+                inDock: "ಡಾಕ್‌ನಲ್ಲಿ",
+                openAudi: "ಓಪನ್ ಆಡಿಟೋರಿಯಂ",
+                busStarted: "ಬಸ್ ಪ್ರಾರಂಭವಾಯಿತು",
+                customPlace: "ಕಸ್ಟಮ್ ಸ್ಥಳ...",
+                set: "ಸೆಟ್ ಮಾಡಿ"
+            }
+        };
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        window.setLanguage = function (lang) {
+            currentLang = lang;
+            renderAll();
+
+            const items = document.querySelectorAll('.menu-item');
+            items.forEach(i => i.classList.remove('active'));
+
+            if (lang === 'hi') items[0].classList.add('active');
+            if (lang === 'ka') items[1].classList.add('active');
+            if (lang === 'en') items[2].classList.add('active');
+        };
+
+        // --- DISPLAY MODE LOGIC ---
+        function renderDisplay(preserveScroll = false) {
+            const track = document.getElementById('terminalTrack');
+            if (!track) return;
+
+            // Filter buses based on current mode
+            const filteredBuses = buses.filter(b => {
+                if (currentDisplayMode === 'STAYBACK') {
+                    return b.id.startsWith('E');
+                } else {
+                    return b.id.startsWith('S');
+                }
+            });
+
+            // Dynamic Speed Logic
+            const busCount = filteredBuses.length;
+            const dynamicDuration = Math.max(10, busCount * 2.5);
+
+            const displayList = [...filteredBuses, ...filteredBuses];
+
+            const rowsHTML = displayList.map(bus => {
+                let statusClass = "neutral";
+                let displayStatus = bus.status;
+                let tripLabel = "NOT STARTED";
+                let tripClass = "parked";
+
+                if (bus.status === "BUS BAY AREA") statusClass = "bus-bay-area";
+                else if (bus.status === "NEAR GATE 4") statusClass = "near-gate-4";
+                else if (bus.status === "IN DOCK") {
+                    displayStatus = "WAITING";
+                    statusClass = "in-dock";
+                }
+                else if (bus.status === "WAITING") {
+                    displayStatus = "WAITING";
+                    statusClass = "waiting";
+                }
+                else if (bus.status === "OPEN AUDITORIUM") statusClass = "open-auditorium";
+                else if (bus.status === "ON ROAD") statusClass = "on-road";
+                else {
+                    statusClass = "custom-status";
+                }
+
+                if (bus.status === "ON ROAD" || bus.isStarted) {
+                    tripLabel = "BUS STARTED";
+                    tripClass = "en-route";
+                } else {
+                    tripLabel = "NOT STARTED";
+                    tripClass = "parked";
+                }
+
+                const isStayback = bus.id.startsWith('E') ? 'stayback-bus' : '';
+
+                return `
+                    <tr class="bus-row" id="row-${bus.id}">
+                        <td style="width:20%">
+                            <div class="bus-badge ${isStayback}">${bus.id}</div>
+                        </td>
+                        <td style="width:45%">
+                            <div class="status-wrapper ${statusClass}">
+                                <span class="status-text">${displayStatus}</span>
+                            </div>
+                        </td>
+                        <td style="width:35%">
+                            <div class="trip-status ${tripClass}">
+                                <div class="status-info">
+                                    <span class="trip-text">${tripLabel}</span>
+                                    <span class="update-time">LIVE FEED</span>
+                                </div>
+                                <div class="live-pulse"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Apply to DOM
+            const existingTbody = document.querySelector('.display-board tbody');
+            const ribbon = document.querySelector('.marquee-ribbon');
+
+            if (ribbon) {
+                ribbon.style.animationDuration = `${dynamicDuration}s`;
+            }
+
+            if (existingTbody && preserveScroll) {
+                existingTbody.innerHTML = rowsHTML;
+            } else {
+                const headerTable = document.createElement('table');
+                headerTable.className = 'display-board fixed-header';
+                headerTable.innerHTML = `
+                    <thead>
+                        <tr class="board-header">
+                            <th style="width: 20%">BUS ID</th>
+                            <th style="width: 45%">LOCATION</th>
+                            <th style="width: 35%">TRIP STATUS</th>
+                        </tr>
+                    </thead>
+                `;
+
+                const viewport = document.createElement('div');
+                viewport.className = 'marquee-viewport';
+
+                const newRibbon = document.createElement('div');
+                newRibbon.className = 'marquee-ribbon';
+                newRibbon.style.animationDuration = `${dynamicDuration}s`;
+
+                const bodyTable = document.createElement('table');
+                bodyTable.className = 'display-board';
+                bodyTable.innerHTML = `<tbody>${rowsHTML}</tbody>`;
+
+                newRibbon.appendChild(bodyTable);
+                viewport.appendChild(newRibbon);
+
+                track.innerHTML = '';
+                track.appendChild(headerTable);
+                track.appendChild(viewport);
+            }
+        }
+
+        // --- SINGLE BUS ADMIN LOGIC ---
+        function renderSingleAdmin() {
+            const container = document.getElementById('singleAdminCard');
+            if (!container || !currentAdminBusId) return;
+
+            const bus = buses.find(b => b.id === currentAdminBusId);
+            if (!bus) return;
+
+            const isBusBay = bus.status === "BUS BAY AREA";
+            const isNearGate = bus.status === "NEAR GATE 4";
+            const isInDock = bus.status === "IN DOCK";
+            const isOpenAudi = bus.status === "OPEN AUDITORIUM";
+            const isOnRoad = bus.status === "ON ROAD";
+
+            let statusClass = "";
+            let displayStatusText = bus.status;
+
+            if (isBusBay) statusClass = "status-bus-bay-area";
+            else if (isNearGate) statusClass = "status-near-gate";
+            else if (isInDock || bus.status === "WAITING") { statusClass = "status-in-dock"; displayStatusText = "WAITING / DOCK"; }
+            else if (isOpenAudi) statusClass = "status-open-auditorium";
+            else if (isOnRoad) statusClass = "status-on-road";
+            else statusClass = "custom-status";
+
+            container.innerHTML = `
+                <div class="card-header ${statusClass}">
+                    <div class="card-bus-id">${bus.id}</div>
+                    <div class="card-current-status">${bus.status}</div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="btn-grid">
+                        <button onclick="updateBus('${bus.id}', 'BUS BAY AREA')" class="action-btn btn-bus-bay ${isBusBay ? 'active' : ''}">
+                            <div class="btn-icon">🚍</div>
+                            <span>${t('busBay')}</span>
+                        </button>
+                        <button onclick="updateBus('${bus.id}', 'NEAR GATE 4')" class="action-btn btn-near-gate ${isNearGate ? 'active' : ''}">
+                             <div class="btn-icon">🏫</div>
+                             <span>${t('nearDps')}</span>
+                        </button>
+                        <button onclick="updateBus('${bus.id}', 'IN DOCK')" class="action-btn btn-in-dock ${isInDock ? 'active' : ''}">
+                             <div class="btn-icon">⏱</div>
+                             <span>${t('inDock')}</span>
+                        </button>
+                        <button onclick="updateBus('${bus.id}', 'OPEN AUDITORIUM')" class="action-btn btn-auditorium ${isOpenAudi ? 'active' : ''}">
+                             <div class="btn-icon">🏟️</div>
+                             <span>${t('openAudi')}</span>
+                        </button>
+                    </div>
+                    
+                    <div class="custom-input-group">
+                        <input type="text" id="custom-${bus.id}" class="custom-input" placeholder="${t('customPlace')}">
+                        <button onclick="updateBusCustom('${bus.id}')" class="btn-update">${t('set')}</button>
+                    </div>
+                    
+                    <div class="bus-started-toggle ${bus.isStarted ? 'active' : ''}" onclick="toggleBusStarted('${bus.id}')">
+                        <span class="toggle-label">${t('busStarted')}</span>
+                        <div class="toggle-switch"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // --- UPDATE FUNCTIONS ---
+        window.updateBus = function (id, status) {
+            const bus = buses.find(b => b.id === id);
+            if (bus) {
+                bus.status = status;
+                saveAndBroadcast();
+                renderAll(true);
+            }
+        };
+
+        window.updateBusCustom = function (id) {
+            const input = document.getElementById(`custom-${id}`);
+            if (input && input.value.trim() !== "") {
+                const bus = buses.find(b => b.id === id);
+                if (bus) {
+                    bus.status = input.value.trim().toUpperCase();
+                    saveAndBroadcast();
+                    renderAll(true);
+                    input.value = "";
+                }
+            }
+        };
+
+        window.toggleBusStarted = function (id) {
+            const bus = buses.find(b => b.id === id);
+            if (bus) {
+                bus.isStarted = !bus.isStarted;
+                saveAndBroadcast();
+                renderAll(true);
+            }
+        };
+
+
+        function renderAll(preserveScroll = false) {
+            renderDisplay(preserveScroll);
+            if (currentAdminBusId) {
+                renderSingleAdmin();
+                document.getElementById('languageSelector').classList.remove('hidden');
+            } else {
+                document.getElementById('languageSelector').classList.add('hidden');
+            }
+        }
+
+        // --- NOTIFICATION SYSTEM (UPDATED) ---
+        function checkUpdates(newBuses) {
+            if (previousBuses.length === 0) return;
+
+            newBuses.forEach(newBus => {
+                const oldBus = previousBuses.find(b => b.id === newBus.id);
+                if (oldBus) {
+                    const statusChanged = newBus.status !== oldBus.status;
+                    const tripChanged = newBus.isStarted !== oldBus.isStarted;
+
+                    if (statusChanged || tripChanged) {
+                        const eventType = tripChanged && newBus.isStarted ? 'DEPARTURE' : 'LOCATION';
+                        showNotification(newBus, eventType);
+                    }
+                }
+            });
+        }
+
+        function showNotification(bus, type) {
+            const container = document.getElementById('notificationContainer');
+
+            // REMOVE EXISTING TOAST FOR THIS BUS (Debouncing/Replacement)
+            const existingToast = document.querySelector(`.notification-toast[data-bus-id="${bus.id}"]`);
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.setAttribute('data-bus-id', bus.id); // Tag it
+
+            let statusClass = "toast-gate";
+            let icon = "📢";
+
+            if (bus.status === "BUS BAY AREA") { statusClass = "toast-bus-bay"; icon = "🚍"; }
+            if (bus.status === "IN DOCK" || bus.status === "WAITING") { statusClass = "toast-dock"; icon = "⏱"; }
+            if (bus.status === "OPEN AUDITORIUM") { statusClass = "toast-audi"; icon = "🏟️"; }
+            if (bus.status === "NEAR GATE 4") { statusClass = "toast-gate"; icon = "🏫"; }
+
+            // CUSTOM MESSAGE LOGIC (Requested)
+            let actionText = "UPDATED STATUS";
+            let detailText = bus.status;
+
+            if (type === 'DEPARTURE') {
+                actionText = "TRIP STARTED";
+                detailText = "BUS STARTED • ON ROAD";
+                icon = "🚀";
+                statusClass = "toast-on-road"; // Will need to ensure this class exists e.g. red
+            } else {
+                actionText = "LOCATION UPDATE";
+                detailText = `MOVED TO ${bus.status}`;
+            }
+
+            toast.className = `notification-toast ${statusClass}`;
+            toast.style.animation = 'none'; // Reset to force reflow if needed, but we create new element
+            toast.offsetHeight; /* trigger reflow */
+            toast.style.animation = null;
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icon}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${actionText} • ${bus.id}</div>
+                    <div class="toast-message">${detailText}</div>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Remove after 12s
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, 12500);
+        }
+
+        // --- NAVIGATION & AUTH ---
+        window.enterDisplayMode = function (mode) {
+            currentDisplayMode = mode;
+            const landing = document.getElementById('landing-view');
+            const display = document.getElementById('display-view');
+            const banner = document.getElementById('alertBanner');
+            const displayTitle = document.getElementById('displayTitle');
+
+            if (displayTitle) {
+                displayTitle.textContent = (mode === 'STAYBACK') ? "STAYBACK - E SERIES STATUS" : "LIVE BUS STATUS";
+            }
+
+            const footerBtn = document.getElementById('footerSwitch');
+            footerBtn.style.display = 'none';
+
+            landing.classList.add('hidden');
+            display.classList.add('active');
+            banner.classList.remove('hidden');
+
+            setTimeout(() => renderDisplay(false), 100);
+        }
+
+        window.checkAuth = function () {
+            const busInput = document.getElementById('busIdInput');
+            const pinInput = document.getElementById('pinInput');
+            const feedbackMsg = document.getElementById('authFeedback');
+
+            const enteredBusId = busInput.value.trim().toUpperCase();
+            const enteredPin = pinInput.value.trim();
+            const busExists = buses.some(b => b.id === enteredBusId);
+
+            // Reset Error States
+            busInput.classList.remove('input-error');
+            pinInput.classList.remove('input-error');
+            feedbackMsg.classList.remove('visible');
+
+            if (!enteredBusId) {
+                busInput.classList.add('input-error');
+                return;
+            }
+            if (!enteredPin) {
+                pinInput.classList.add('input-error');
+                return;
+            }
+
+            if (busExists && enteredPin === '1234') {
+                currentAdminBusId = enteredBusId;
+                enterInputMode();
+                busInput.value = '';
+                pinInput.value = '';
+            } else {
+                feedbackMsg.classList.add('visible');
+
+                if (!busExists) {
+                    busInput.classList.add('input-error');
+                }
+                if (enteredPin !== '1234') {
+                    pinInput.classList.add('input-error');
+                }
+
+                setTimeout(() => {
+                    busInput.classList.remove('input-error');
+                    pinInput.classList.remove('input-error');
+                }, 500);
+            }
+        }
+
+        function enterInputMode() {
+            const landing = document.getElementById('landing-view');
+            const singleAdmin = document.getElementById('single-admin-view');
+            const banner = document.getElementById('alertBanner');
+            const footerBtn = document.getElementById('footerSwitch');
+
+            landing.classList.add('hidden');
+            singleAdmin.classList.add('active');
+            banner.classList.add('hidden');
+            footerBtn.style.display = 'block';
+
+            renderAll();
+        }
+
+        document.getElementById('pinInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkAuth();
+            }
+        });
+
+
+        // --- INIT & EVENTS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            previousBuses = JSON.parse(JSON.stringify(buses)); // Init previous state
+            renderAll(false);
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // Listen for cross-tab updates
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'busData_v3') {
+                    const newBuses = JSON.parse(e.newValue);
+                    checkUpdates(newBuses); // Check and Notify
+                    buses = newBuses;
+                    previousBuses = JSON.parse(JSON.stringify(newBuses));
+                    renderAll(true);
+                }
+            });
+
+            const toggleBtn = document.getElementById('modeToggle');
+            toggleBtn.addEventListener('click', () => {
+                location.reload();
+            });
+
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    renderDisplay(false);
+                }, 250);
+            });
+        });
+
+    </script>
+</body>
+
+</html>
